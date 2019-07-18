@@ -6,7 +6,7 @@ Allows hooking up the origial buttons of the raymarine st2000 to pypilot, using 
 Keys and LED are connected to GPIO and ground.
 
 KEY   BCM
--------------
+----  --------
 STBY  GPIO-21
 AUTO  GPIO-26
 -1    GPIO-5
