@@ -77,7 +77,6 @@ def adjust_gain (mode, factor):
                 gain = "D"
         gain_name = "ap.pilot." + ap_pilot + "." + gain
         gain_name = gain_name.replace("pilot..", "")
-        print gain_name
         current_gain = GetSignalkValue (gain_name)
         new_gain = current_gain * factor
         print gain_name + " = " + str(current_gain) + " * " + str(factor) + " = " + str(new_gain)
@@ -95,6 +94,16 @@ def adjust_heading (adjustment):
 def do_blinker():
         global blinker_counter
         global mode
+
+        if (blinker_counter == 0):
+                ap_enabled = GetSignalkValue ("ap.enabled")
+                if (ap_enabled and ap_mode == 'compass' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS]):
+                        mode = MODE_AUTO
+                if (ap_enabled and ap_mode == 'gps'):
+                        mode = MODE_TRACK
+                if (not ap_enabled):
+                        mode = MODE_STBY
+
         if (mode == MODE_STBY):
                 light_on = (blinker_counter in [38, 39])
         if (mode == MODE_AUTO):
@@ -110,14 +119,6 @@ def do_blinker():
                 GPIO.output(BLINKER, 1)
         else:
                 GPIO.output(BLINKER, 0)
-        if (blinker_counter == 0):
-                ap_enabled = GetSignalkValue ("ap.enabled")
-                if (ap_enabled and ap_mode == 'compass'):
-                        mode = MODE_AUTO
-                if (ap_enabled and ap_mode == 'gps'):
-                        mode = MODE_TRACK
-                if (not ap_enabled):
-                        mode = MODE_STBY
 
         blinker_counter = (blinker_counter + 1) % 40
 
@@ -215,10 +216,13 @@ while 1:
                         print datetime.now()
                         SetSignalkValue ("ap.heading_command", GetSignalkValue("ap.heading"))
                         SetSignalkValue ("ap.enabled", True)
+                        SetSignalkValue ("ap.mode", "compass")
                         print datetime.now()
                         next_mode = MODE_AUTO
                         if (mode == MODE_TRACK):
                                 blinker_counter = 38 # for immediate blinker feedback
+                        else:
+                                blinker_counter = 0
                         beep(1)
                 # +1
                 if (key == 4):
@@ -230,14 +234,7 @@ while 1:
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_LOW)
                         if (mode in [MODE_STBY]):
-                                SetSignalkValue ("servo.command", 400)
-                                print GetSignalkValue("servo.command")
-                                print GetSignalkValue("servo.command")
-                                print GetSignalkValue("servo.command")
-                                print GetSignalkValue("servo.command")
-                                print GetSignalkValue("servo.command")
-                                print GetSignalkValue("servo.command")
-                                print GetSignalkValue("servo.command")
+                                SetSignalkValue ("servo.command", -100)
                 # +10
                 if (key == 8):
                         if (mode == MODE_AUTO):
@@ -271,6 +268,8 @@ while 1:
                                 print "Enter P:"
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, 1 / FACTOR_LOW)
+                        if (mode in [MODE_STBY]):
+                                SetSignalkValue ("servo.command", 100)
                 # Track -10 & +10
                 if (key == 24 and mode != MODE_STBY and mode != MODE_TRACK):
                         print "Track"
