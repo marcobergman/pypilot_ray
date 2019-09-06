@@ -1,14 +1,16 @@
 #!/usr/bin/env python
-
 import RPi.GPIO as GPIO
 from signalk import kjson
+#from signalk.client import *
 import time
 import socket
 from datetime import datetime
+import os
 
 # ST2000 remote control with Raspberry Pi 2
 HOST='127.0.0.1'
 PORT=21311
+
 
 # Tinypilot install:
 # /etc/sv/pypilot_lcd/run
@@ -96,7 +98,10 @@ def do_blinker():
         global mode
 
         if (blinker_counter == 0):
+                print datetime.now()
                 ap_enabled = GetSignalkValue ("ap.enabled")
+                ap_mode = GetSignalkValue ("ap.mode")
+                print datetime.now()
                 if (ap_enabled and ap_mode == 'compass' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS]):
                         mode = MODE_AUTO
                 if (ap_enabled and ap_mode == 'gps'):
@@ -124,7 +129,7 @@ def do_blinker():
 
 
 def GetSignalkValue (name):
-        connection = socket.create_connection((HOST, PORT))
+        #connection = socket.create_connection((HOST, PORT))
         request = {'method' : 'get', 'name' : name}
         connection.send(kjson.dumps(request)+'\n')
         line=connection.recv(1024)
@@ -133,20 +138,24 @@ def GetSignalkValue (name):
                 value = msg[name]["value"]
         except:
                 value = ""
-        connection.close();
+        #connection.close();
         return value
 
 def SetSignalkValue (name, value):
         # Write one value to signalk
-        connection = socket.create_connection((HOST, PORT))
+        #connection = socket.create_connection((HOST, PORT))
         request = {'method' : 'set', 'name' : name, 'value' : value}
         connection.send(kjson.dumps(request)+'\n')
-        connection.close();
+        #connection.close();
 
 
 print "Starting up"
 
+def on_con(client):
+        print 'ray connected to signalk via localhost'
+
 print "Connecting to SignalK at " + HOST + ":" + str(PORT)
+connection = socket.create_connection((HOST, PORT))
 
 ap_enabled = GetSignalkValue ("ap.enabled")
 ap_mode = GetSignalkValue ("ap.mode")
@@ -154,10 +163,6 @@ ap_pilot = GetSignalkValue ("ap.pilot")
 print "Autopilot: " + ap_pilot + " / enabled="+ str(ap_enabled) + " / " + ap_mode
 
 mode = MODE_STBY
-if (ap_enabled and ap_mode == 'compass'):
-        mode = MODE_AUTO
-if (ap_enabled and ap_mode == 'gps'):
-        mode = MODE_TRACK
 
 beep(3)
 print "Ready"
@@ -165,19 +170,28 @@ print "Ready"
 next_mode = mode
 
 blinker_counter = 38
+remote = 0
 
 while 1:
         # wait for a button to be pressed
-        while (GPIO.input(SB) == 1 and GPIO.input(AU) == 1 and GPIO.input(P1) == 1 and GPIO.input(P10) == 1 and GPIO.input(M10) == 1 and GPIO.input(M1) == 1):
+        while (GPIO.input(SB) == 1 and GPIO.input(AU) == 1 and GPIO.input(P1) == 1 and GPIO.input(P10) == 1 and GPIO.input(M10) == 1 and GPIO.input(M1) == 1 and remote == 0):
                 do_blinker()
                 time.sleep (0.05)
+                try:
+                        with open('/tmp/remote', 'r') as myfile:
+                                line = myfile.read().replace("\n", "")
+                        print "remote=" + line + " counter " + str(blinker_counter)
+                        os.remove('/tmp/remote')
+                        remote = int(line)
+                except:
+                        remote = 0
         blinker_counter = 0
 
         # wait for a possible second one or the key to be finished vibrating
         time.sleep (0.05)
 
         # store the key (or key combination) in one variable
-        key = (1-GPIO.input(SB)) + 2*(1-GPIO.input(AU)) + 4*(1-GPIO.input(P1)) + 8*(1-GPIO.input(P10)) + 16*(1-GPIO.input(M10)) + 32*(1-GPIO.input(M1));
+        key = (1-GPIO.input(SB)) + 2*(1-GPIO.input(AU)) + 4*(1-GPIO.input(P1)) + 8*(1-GPIO.input(P10)) + 16*(1-GPIO.input(M10)) + 32*(1-GPIO.input(M1)) + remote;
 
         # wait for a long press. Actually, there are no real interesting long presses to implement.
         counter = 0.1
@@ -197,11 +211,11 @@ while 1:
         # Short press
         if (counter > 0):
 
-                #print "key = " + str(key)
+                print "key = " + str(key)
 
                 # Stand by
                 if (key == 1):
-                        if (mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D]):
+                        if (mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK]):
                                 print "Stand by"
                                 SetSignalkValue ("ap.enabled", False)
                                 SetSignalkValue ("servo.command", 0)
@@ -225,7 +239,7 @@ while 1:
                                 blinker_counter = 0
                         beep(1)
                 # +1
-                if (key == 4):
+                if (key == 4 ):
                         if (mode == MODE_AUTO):
                                 print "+1"
                                 adjust_heading(+1)
@@ -234,7 +248,7 @@ while 1:
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_LOW)
                         if (mode in [MODE_STBY]):
-                                SetSignalkValue ("servo.command", -100)
+                                SetSignalkValue ("servo.command", -200)
                 # +10
                 if (key == 8):
                         if (mode == MODE_AUTO):
@@ -244,6 +258,8 @@ while 1:
                                 beep(2)
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_MEDIUM)
+                        if (mode in [MODE_STBY]):
+                                SetSignalkValue ("servo.command", -1000)
                 # -10
                 if (key == 16):
                         if (mode == MODE_AUTO):
@@ -256,6 +272,8 @@ while 1:
                                 print "Enter I:"
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, 1 / FACTOR_MEDIUM)
+                        if (mode in [MODE_STBY]):
+                                SetSignalkValue ("servo.command", +1000)
                 # -1
                 if (key == 32):
                         if (mode == MODE_AUTO):
@@ -269,27 +287,33 @@ while 1:
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, 1 / FACTOR_LOW)
                         if (mode in [MODE_STBY]):
-                                SetSignalkValue ("servo.command", 100)
+                                SetSignalkValue ("servo.command", +200)
                 # Track -10 & +10
                 if (key == 24 and mode != MODE_STBY and mode != MODE_TRACK):
                         print "Track"
+                        SetSignalkValue ("ap.heading_command", GetSignalkValue("ap.heading"))
+                        SetSignalkValue ("ap.enabled", True)
+                        SetSignalkValue ("ap.mode", "gps")
                         next_mode = MODE_TRACK
                 # Tack Port -1 & -10
                 if (key == 48 and mode == MODE_AUTO):
                         print "Tack Port"
-                        SetSignalkValue("ap.tack.direction", "port")
-                        SetSignalkValue("ap.tack.state", "begin")
+                        adjust_heading(-100)
+                        # SetSignalkValue("ap.tack.direction", "port")
+                        # SetSignalkValue("ap.tack.state", "begin")
                 # Tack Starboard +1 & +10
                 if (key == 12 and mode == MODE_AUTO):
                         print "Tack Starboard"
-                        SetSignalkValue("ap.tack.direction", "starboard")
-                        SetSignalkValue("ap.tack.state", "begin")
+                        adjust_heading(+100)
+                        # SetSignalkValue("ap.tack.direction", "starboard")
+                        # SetSignalkValue("ap.tack.state", "begin")
                 # Set gains:  +1 & -1
                 if (key == 36 and mode in [MODE_AUTO, MODE_TRACK, MODE_P, MODE_I, MODE_D]):
                         print "Choose gain"
                         next_mode = MODE_GAINS
 
                 mode = next_mode
+                remote = 0
 
 
         # Wait for key to be lifted
