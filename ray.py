@@ -34,6 +34,7 @@ MODE_GAINS = 5
 MODE_P = 6
 MODE_I = 7
 MODE_D = 8
+MODE_WAYPOINT = 9
 
 FACTOR_LOW = 1.1
 FACTOR_MEDIUM = 1.5
@@ -98,11 +99,12 @@ def do_blinker():
         global mode
 
         if (blinker_counter == 0):
-                print datetime.now()
+                #print datetime.now()
                 ap_enabled = GetSignalkValue ("ap.enabled")
+                #print datetime.now()
                 ap_mode = GetSignalkValue ("ap.mode")
-                print datetime.now()
-                if (ap_enabled and ap_mode == 'compass' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS]):
+                #print datetime.now()
+                if (ap_enabled and ap_mode == 'compass' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS, MODE_WAYPOINT]):
                         mode = MODE_AUTO
                 if (ap_enabled and ap_mode == 'gps'):
                         mode = MODE_TRACK
@@ -115,6 +117,8 @@ def do_blinker():
                 light_on = (blinker_counter not in [38, 39])
         if (mode == MODE_TRACK):
                 light_on = (blinker_counter not in [1, 2, 5, 6])
+        if (mode == MODE_WAYPOINT):
+                light_on = (blinker_counter not in [1, 2, 5, 6, 9, 10])
         if (mode == MODE_GAINS):
                 light_on = (blinker_counter not in [1, 2, 3, 4, 5, 11, 12, 13, 14, 15])
         if (mode in [MODE_P, MODE_I, MODE_D]):
@@ -215,7 +219,7 @@ while 1:
 
                 # Stand by
                 if (key == 1):
-                        if (mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK]):
+                        if (mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT]):
                                 print "Stand by"
                                 SetSignalkValue ("ap.enabled", False)
                                 SetSignalkValue ("servo.command", 0)
@@ -289,9 +293,9 @@ while 1:
                         if (mode in [MODE_STBY]):
                                 SetSignalkValue ("servo.command", +200)
                 # Track -10 & +10
-                if (key == 24 and mode != MODE_STBY and mode != MODE_TRACK):
+                if (key == 24 and mode in [MODE_AUTO, MODE_WAYPOINT]):
                         print "Track"
-                        SetSignalkValue ("ap.heading_command", GetSignalkValue("ap.heading"))
+                        #SetSignalkValue ("ap.heading_command", GetSignalkValue("ap.heading"))
                         SetSignalkValue ("ap.enabled", True)
                         SetSignalkValue ("ap.mode", "gps")
                         next_mode = MODE_TRACK
@@ -311,6 +315,10 @@ while 1:
                 if (key == 36 and mode in [MODE_AUTO, MODE_TRACK, MODE_P, MODE_I, MODE_D]):
                         print "Choose gain"
                         next_mode = MODE_GAINS
+                # Artificial mode: Waypoint Arrival
+                if (key == 1000 and mode in [MODE_TRACK, MODE_AUTO]):
+                        print "Waypoint arrival, confirm with 'Track'"
+                        next_mode = MODE_WAYPOINT
 
                 mode = next_mode
                 remote = 0
@@ -320,4 +328,3 @@ while 1:
         while  (GPIO.input(SB) == 0 or GPIO.input(AU) == 0 or GPIO.input(P1) == 0 or GPIO.input(P10) == 0 or GPIO.input(M10) == 0 or GPIO.input(M1) == 0):
                 do_blinker()
                 time.sleep (0.1)
-
