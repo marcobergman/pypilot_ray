@@ -99,11 +99,8 @@ def do_blinker():
         global mode
 
         if (blinker_counter == 0):
-                #print datetime.now()
                 ap_enabled = GetSignalkValue ("ap.enabled")
-                #print datetime.now()
                 ap_mode = GetSignalkValue ("ap.mode")
-                #print datetime.now()
                 if (ap_enabled and ap_mode == 'compass' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS, MODE_WAYPOINT]):
                         mode = MODE_AUTO
                 if (ap_enabled and ap_mode == 'gps'):
@@ -112,18 +109,17 @@ def do_blinker():
                         mode = MODE_STBY
 
         if (mode == MODE_STBY):
-                light_on = (blinker_counter in [38, 39])
+                light_on = (blinker_counter in [1, 2])
         if (mode == MODE_AUTO):
-                light_on = (blinker_counter not in [38, 39])
+                light_on = (blinker_counter not in [1, 2])
         if (mode == MODE_TRACK):
                 light_on = (blinker_counter not in [1, 2, 5, 6])
         if (mode == MODE_WAYPOINT):
-                light_on = (blinker_counter not in [1, 2, 5, 6, 9, 10])
+                light_on = (blinker_counter not in [1, 2, 5, 6, 9, 10, 11, 12, 13, 14])
         if (mode == MODE_GAINS):
                 light_on = (blinker_counter not in [1, 2, 3, 4, 5, 11, 12, 13, 14, 15])
         if (mode in [MODE_P, MODE_I, MODE_D]):
                 light_on = (blinker_counter not in [1, 2, 11, 12, 21, 22, 31, 32])
-        #print "blinker_counter "+ "{:0>2d}".format(blinker_counter) + " light_on "+str(light_on)
         if (light_on):
                 GPIO.output(BLINKER, 1)
         else:
@@ -133,7 +129,6 @@ def do_blinker():
 
 
 def GetSignalkValue (name):
-        #connection = socket.create_connection((HOST, PORT))
         request = {'method' : 'get', 'name' : name}
         connection.send(kjson.dumps(request)+'\n')
         line=connection.recv(1024)
@@ -142,15 +137,12 @@ def GetSignalkValue (name):
                 value = msg[name]["value"]
         except:
                 value = ""
-        #connection.close();
         return value
 
 def SetSignalkValue (name, value):
         # Write one value to signalk
-        #connection = socket.create_connection((HOST, PORT))
         request = {'method' : 'set', 'name' : name, 'value' : value}
         connection.send(kjson.dumps(request)+'\n')
-        #connection.close();
 
 
 print "Starting up"
@@ -173,7 +165,7 @@ print "Ready"
 
 next_mode = mode
 
-blinker_counter = 38
+blinker_counter = 0
 remote = 0
 
 while 1:
@@ -184,12 +176,12 @@ while 1:
                 try:
                         with open('/tmp/remote', 'r') as myfile:
                                 line = myfile.read().replace("\n", "")
-                        print "remote=" + line + " counter " + str(blinker_counter)
+                        print "remote=" + line
                         os.remove('/tmp/remote')
                         remote = int(line)
                 except:
                         remote = 0
-        blinker_counter = 0
+        #blinker_counter = 0
 
         # wait for a possible second one or the key to be finished vibrating
         time.sleep (0.05)
@@ -237,17 +229,12 @@ while 1:
                         SetSignalkValue ("ap.mode", "compass")
                         print datetime.now()
                         next_mode = MODE_AUTO
-                        if (mode == MODE_TRACK):
-                                blinker_counter = 38 # for immediate blinker feedback
-                        else:
-                                blinker_counter = 0
                         beep(1)
                 # +1
                 if (key == 4 ):
                         if (mode == MODE_AUTO):
                                 print "+1"
                                 adjust_heading(+1)
-                                blinker_counter = 38 # for immediate blinker feedback
                                 beep(1)
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_LOW)
@@ -258,7 +245,6 @@ while 1:
                         if (mode == MODE_AUTO):
                                 print "+10"
                                 adjust_heading(+10)
-                                blinker_counter = 38 # for immediate blinker feedback
                                 beep(2)
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_MEDIUM)
@@ -269,7 +255,6 @@ while 1:
                         if (mode == MODE_AUTO):
                                 print "-10"
                                 adjust_heading(-10)
-                                blinker_counter = 38 # for immediate blinker feedback
                                 beep (2)
                         if (mode == MODE_GAINS):
                                 next_mode = MODE_I
@@ -283,7 +268,6 @@ while 1:
                         if (mode == MODE_AUTO):
                                 print "-1"
                                 adjust_heading(-1)
-                                blinker_counter = 38 # for immediate blinker feedback
                                 beep (1)
                         if (mode == MODE_GAINS):
                                 next_mode = MODE_P
@@ -295,7 +279,6 @@ while 1:
                 # Track -10 & +10
                 if (key == 24 and mode in [MODE_AUTO, MODE_WAYPOINT]):
                         print "Track"
-                        #SetSignalkValue ("ap.heading_command", GetSignalkValue("ap.heading"))
                         SetSignalkValue ("ap.enabled", True)
                         SetSignalkValue ("ap.mode", "gps")
                         next_mode = MODE_TRACK
@@ -320,6 +303,8 @@ while 1:
                         print "Waypoint arrival, confirm with 'Track'"
                         next_mode = MODE_WAYPOINT
 
+                if mode != next_mode:
+                        blinker_counter = 1;
                 mode = next_mode
                 remote = 0
 
