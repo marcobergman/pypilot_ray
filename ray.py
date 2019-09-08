@@ -34,8 +34,8 @@ MODE_GAINS = 5
 MODE_P = 6
 MODE_I = 7
 MODE_D = 8
-MODE_WAYPOINT = 9
-
+MODE_WAYPOINT_R = 9
+MODE_WAYPOINT_L = 10
 FACTOR_LOW = 1.1
 FACTOR_MEDIUM = 1.5
 FACTOR_HIGH = 2.0
@@ -70,6 +70,17 @@ def beep(b):
                 time.sleep(0.1)
                 beep(1)
 
+def bell(b):
+        global last_bell
+        if ( b == 1 ):
+                file = '/usr/share/opencpn/sounds/1bells.wav'
+        if ( b == 2 ):
+                file = '/usr/share/opencpn/sounds/2bells.wav'
+        try:
+                os.system('echo ' + file + ' | nc 192.168.178.37 7000')
+        except:
+                beep(b)
+        last_bell = datetime.now()
 
 def adjust_gain (mode, factor):
         if (mode == MODE_P):
@@ -97,13 +108,14 @@ def adjust_heading (adjustment):
 def do_blinker():
         global blinker_counter
         global mode
+        global last_bell
 
         if (blinker_counter == 0):
                 ap_enabled = GetSignalkValue ("ap.enabled")
                 ap_mode = GetSignalkValue ("ap.mode")
-                if (ap_enabled and ap_mode == 'compass' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS, MODE_WAYPOINT]):
+                if (ap_enabled and ap_mode == 'compass' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                         mode = MODE_AUTO
-                if (ap_enabled and ap_mode == 'gps'):
+                if (ap_enabled and ap_mode == 'gps' and mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                         mode = MODE_TRACK
                 if (not ap_enabled):
                         mode = MODE_STBY
@@ -114,10 +126,15 @@ def do_blinker():
                 light_on = (blinker_counter not in [1, 2])
         if (mode == MODE_TRACK):
                 light_on = (blinker_counter not in [1, 2, 5, 6])
-        if (mode == MODE_WAYPOINT):
-                light_on = (blinker_counter not in [1, 2, 5, 6, 9, 10, 11, 12, 13, 14])
+        if (mode in [MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
+                light_on = (blinker_counter % 10 > 5)
+                if ((datetime.now() - last_bell).total_seconds() > 5):
+                        if mode in [MODE_WAYPOINT_R]:
+                                bell(1)
+                        else:
+                                bell(2)
         if (mode == MODE_GAINS):
-                light_on = (blinker_counter not in [1, 2, 3, 4, 5, 11, 12, 13, 14, 15])
+                light_on = (blinker_counter % 6 > 3)
         if (mode in [MODE_P, MODE_I, MODE_D]):
                 light_on = (blinker_counter not in [1, 2, 11, 12, 21, 22, 31, 32])
         if (light_on):
@@ -126,6 +143,7 @@ def do_blinker():
                 GPIO.output(BLINKER, 0)
 
         blinker_counter = (blinker_counter + 1) % 40
+
 
 
 def GetSignalkValue (name):
@@ -160,7 +178,7 @@ print "Autopilot: " + ap_pilot + " / enabled="+ str(ap_enabled) + " / " + ap_mod
 
 mode = MODE_STBY
 
-beep(3)
+bell(2)
 print "Ready"
 
 next_mode = mode
@@ -211,7 +229,7 @@ while 1:
 
                 # Stand by
                 if (key == 1):
-                        if (mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT]):
+                        if (mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                                 print "Stand by"
                                 SetSignalkValue ("ap.enabled", False)
                                 SetSignalkValue ("servo.command", 0)
@@ -277,7 +295,7 @@ while 1:
                         if (mode in [MODE_STBY]):
                                 SetSignalkValue ("servo.command", +200)
                 # Track -10 & +10
-                if (key == 24 and mode in [MODE_AUTO, MODE_WAYPOINT]):
+                if (key == 24 and mode in [MODE_AUTO, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                         print "Track"
                         SetSignalkValue ("ap.enabled", True)
                         SetSignalkValue ("ap.mode", "gps")
@@ -301,7 +319,12 @@ while 1:
                 # Artificial mode: Waypoint Arrival
                 if (key == 1000 and mode in [MODE_TRACK, MODE_AUTO]):
                         print "Waypoint arrival, confirm with 'Track'"
-                        next_mode = MODE_WAYPOINT
+                        next_mode = MODE_WAYPOINT_R
+                        bell(1)
+                if (key == 1001 and mode in [MODE_TRACK, MODE_AUTO]):
+                        print "Waypoint arrival, confirm with 'Track'"
+                        next_mode = MODE_WAYPOINT_L
+                        bell(2)
 
                 if mode != next_mode:
                         blinker_counter = 1;
