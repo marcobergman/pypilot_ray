@@ -257,7 +257,8 @@ while 1:
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_LOW)
                         if (mode in [MODE_STBY]):
-                                SetSignalkValue ("servo.command", -200)
+                                servo_command = -20
+                                SetSignalkValue ("servo.command", servo_command)
                 # +10
                 if (key == 8):
                         if (mode == MODE_AUTO):
@@ -267,7 +268,8 @@ while 1:
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_MEDIUM)
                         if (mode in [MODE_STBY]):
-                                SetSignalkValue ("servo.command", -1000)
+                                servo_command = -1000
+                                SetSignalkValue ("servo.command", servo_command)
                 # -10
                 if (key == 16):
                         if (mode == MODE_AUTO):
@@ -280,7 +282,8 @@ while 1:
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, 1 / FACTOR_MEDIUM)
                         if (mode in [MODE_STBY]):
-                                SetSignalkValue ("servo.command", +1000)
+                                servo_command = +1000
+                                SetSignalkValue ("servo.command", servo_command)
                 # -1
                 if (key == 32):
                         if (mode == MODE_AUTO):
@@ -293,7 +296,8 @@ while 1:
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, 1 / FACTOR_LOW)
                         if (mode in [MODE_STBY]):
-                                SetSignalkValue ("servo.command", +200)
+                                servo_command = +20
+                                SetSignalkValue ("servo.command", servo_command)
                 # Track -10 & +10
                 if (key == 24 and mode in [MODE_AUTO, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                         print "Track"
@@ -336,3 +340,7 @@ while 1:
         while  (GPIO.input(SB) == 0 or GPIO.input(AU) == 0 or GPIO.input(P1) == 0 or GPIO.input(P10) == 0 or GPIO.input(M10) == 0 or GPIO.input(M1) == 0):
                 do_blinker()
                 time.sleep (0.1)
+                if key in [4,8,16,32] and mode in [MODE_STBY]:
+                        SetSignalkValue ("servo.command", servo_command)
+        if (mode in [MODE_STBY]):
+                SetSignalkValue ("servo.command", 0)
