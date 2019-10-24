@@ -39,6 +39,8 @@ MODE_WAYPOINT_L = 10
 FACTOR_LOW = 1.1
 FACTOR_MEDIUM = 1.5
 FACTOR_HIGH = 2.0
+SERVO_SPEED_SLOW = 0.2
+SERVO_SPEED_FAST = 1.0
 
 # Long press threshold
 THRESHOLD = 10
@@ -258,6 +260,8 @@ while 1:
                                 adjust_gain (mode, FACTOR_LOW)
                         if (mode in [MODE_STBY]):
                                 servo_command = -20
+                                SetSignalkValue ("servo.max_speed", SERVO_SPEED_SLOW)
+                                SetSignalkValue ("servo.min_speed", SERVO_SPEED_SLOW)
                                 SetSignalkValue ("servo.command", servo_command)
                 # +10
                 if (key == 8):
@@ -269,6 +273,8 @@ while 1:
                                 adjust_gain (mode, FACTOR_MEDIUM)
                         if (mode in [MODE_STBY]):
                                 servo_command = -1000
+                                SetSignalkValue ("servo.max_speed", SERVO_SPEED_FAST)
+                                SetSignalkValue ("servo.min_speed", SERVO_SPEED_FAST)
                                 SetSignalkValue ("servo.command", servo_command)
                 # -10
                 if (key == 16):
@@ -283,6 +289,8 @@ while 1:
                                 adjust_gain (mode, 1 / FACTOR_MEDIUM)
                         if (mode in [MODE_STBY]):
                                 servo_command = +1000
+                                SetSignalkValue ("servo.max_speed", SERVO_SPEED_FAST)
+                                SetSignalkValue ("servo.min_speed", SERVO_SPEED_FAST)
                                 SetSignalkValue ("servo.command", servo_command)
                 # -1
                 if (key == 32):
@@ -297,6 +305,8 @@ while 1:
                                 adjust_gain (mode, 1 / FACTOR_LOW)
                         if (mode in [MODE_STBY]):
                                 servo_command = +20
+                                SetSignalkValue ("servo.max_speed", SERVO_SPEED_SLOW)
+                                SetSignalkValue ("servo.min_speed", SERVO_SPEED_SLOW)
                                 SetSignalkValue ("servo.command", servo_command)
                 # Track -10 & +10
                 if (key == 24 and mode in [MODE_AUTO, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
@@ -344,6 +354,7 @@ while 1:
                 time.sleep (0.1)
                 if key in [4,8,16,32] and mode in [MODE_STBY]:
                         SetSignalkValue ("servo.command", servo_command)
+        SetSignalkValue ("servo.max_speed", SERVO_SPEED_FAST)
+        SetSignalkValue ("servo.min_speed", SERVO_SPEED_FAST)
         if (mode in [MODE_STBY]):
                 SetSignalkValue ("servo.command", 0)
-
