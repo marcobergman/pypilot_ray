@@ -75,15 +75,15 @@ def beep(b):
 def bell(b):
         global last_bell
 
-        bel1_server = GetSignalkValue ('ap.bell_server')
-        print ("bel1_server=" + bel1_server)
+        bell_server = GetSignalkValue ('ap.bell_server')
+        print ("bell_server=" + bell_server)
 
         if ( b == 1 ):
                 file = '1bells.wav'
         if ( b == 2 ):
                 file = '2bells.wav'
         try:
-                os.system('echo ' + file + ' | nc -w 1 ' + bel1_server + ' 7000')
+                os.system('echo ' + file + ' | nc -w 1 ' + bell_server + ' 7000')
         except Exception as e:
                 print('ex', e)
                 beep(b)
@@ -363,3 +363,4 @@ while 1:
         SetSignalkValue ("servo.speed.min", SERVO_SPEED_FAST)
         if (mode in [MODE_STBY]):
                 SetSignalkValue ("servo.command", 0)
+
