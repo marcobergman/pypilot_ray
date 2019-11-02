@@ -74,13 +74,18 @@ def beep(b):
 
 def bell(b):
         global last_bell
+
+        bel1_server = GetSignalkValue ('ap.bell_server')
+        print ("bel1_server=" + bel1_server)
+
         if ( b == 1 ):
-                file = '/usr/share/opencpn/sounds/1bells.wav'
+                file = '1bells.wav'
         if ( b == 2 ):
-                file = '/usr/share/opencpn/sounds/2bells.wav'
+                file = '2bells.wav'
         try:
-                os.system('echo ' + file + ' | nc -w 1 10.10.10.1 7000')
-        except:
+                os.system('echo ' + file + ' | nc -w 1 ' + bel1_server + ' 7000')
+        except Exception as e:
+                print('ex', e)
                 beep(b)
         last_bell = datetime.now()
 
