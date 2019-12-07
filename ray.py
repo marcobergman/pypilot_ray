@@ -24,7 +24,7 @@ M10 = 6      # Minus 10
 P10 = 12     # Plus 10
 P1 = 13      # Plus 1
 SB = 21      # Standby
-BUZZER = 25  # Buzzer
+BUZZER = 20  # Buzzer
 BLINKER = 19 # Light
 
 MODE_STBY = 1
@@ -186,6 +186,7 @@ print "Autopilot: " + ap_pilot + " / enabled="+ str(ap_enabled) + " / " + ap_mod
 mode = MODE_STBY
 
 bell(2)
+beep(3)
 print "Ready"
 
 next_mode = mode
@@ -232,21 +233,22 @@ while 1:
         # Short press
         if (counter > 0):
 
-                print "key = " + str(key)
+                print "key = " + str(key) + " mode = " + str(mode)
 
                 # Stand by
                 if (key == 1):
+                        beep(2)
                         if (mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                                 print "Stand by"
                                 SetSignalkValue ("ap.enabled", False)
                                 SetSignalkValue ("servo.command", 0)
                                 next_mode = MODE_STBY
-                                beep(2)
                         if (mode == MODE_GAINS):
                                 next_mode = MODE_D
                                 print "Enter D:"
                 # Auto
                 if (key == 2 and mode != MODE_AUTO):
+                        beep(1)
                         print "Auto"
                         print datetime.now()
                         SetSignalkValue ("ap.heading_command", GetSignalkValue("ap.heading"))
@@ -254,13 +256,12 @@ while 1:
                         SetSignalkValue ("ap.mode", "compass")
                         print datetime.now()
                         next_mode = MODE_AUTO
-                        beep(1)
                 # +1
                 if (key == 4 ):
+                        beep(1)
                         if (mode == MODE_AUTO):
                                 print "+1"
                                 adjust_heading(+1)
-                                beep(1)
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_LOW)
                         if (mode in [MODE_STBY]):
@@ -270,10 +271,10 @@ while 1:
                                 SetSignalkValue ("servo.command", servo_command)
                 # +10
                 if (key == 8):
+                        beep(2)
                         if (mode == MODE_AUTO):
                                 print "+10"
                                 adjust_heading(+10)
-                                beep(2)
                         if (mode in [MODE_P, MODE_I, MODE_D]):
                                 adjust_gain (mode, FACTOR_MEDIUM)
                         if (mode in [MODE_STBY]):
@@ -283,10 +284,10 @@ while 1:
                                 SetSignalkValue ("servo.command", servo_command)
                 # -10
                 if (key == 16):
+                        beep (2)
                         if (mode == MODE_AUTO):
                                 print "-10"
                                 adjust_heading(-10)
-                                beep (2)
                         if (mode == MODE_GAINS):
                                 next_mode = MODE_I
                                 print "Enter I:"
@@ -299,10 +300,10 @@ while 1:
                                 SetSignalkValue ("servo.command", servo_command)
                 # -1
                 if (key == 32):
+                        beep (1)
                         if (mode == MODE_AUTO):
                                 print "-1"
                                 adjust_heading(-1)
-                                beep (1)
                         if (mode == MODE_GAINS):
                                 next_mode = MODE_P
                                 print "Enter P:"
@@ -315,24 +316,28 @@ while 1:
                                 SetSignalkValue ("servo.command", servo_command)
                 # Track -10 & +10
                 if (key == 24 and mode in [MODE_AUTO, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
+                        beep (3)
                         print "Track"
                         SetSignalkValue ("ap.enabled", True)
                         SetSignalkValue ("ap.mode", "gps")
                         next_mode = MODE_TRACK
                 # Tack Port -1 & -10
                 if (key == 48 and mode == MODE_AUTO):
+                        beep (3)
                         print "Tack Port"
                         adjust_heading(-100)
                         # SetSignalkValue("ap.tack.direction", "port")
                         # SetSignalkValue("ap.tack.state", "begin")
                 # Tack Starboard +1 & +10
                 if (key == 12 and mode == MODE_AUTO):
+                        beep (3)
                         print "Tack Starboard"
                         adjust_heading(+100)
                         # SetSignalkValue("ap.tack.direction", "starboard")
                         # SetSignalkValue("ap.tack.state", "begin")
                 # Set gains:  +1 & -1
                 if (key == 36 and mode in [MODE_AUTO, MODE_TRACK, MODE_P, MODE_I, MODE_D]):
+                        beep (3)
                         print "Choose gain"
                         next_mode = MODE_GAINS
                 # Artificial mode: Waypoint Arrival
@@ -349,6 +354,7 @@ while 1:
 
                 if mode != next_mode:
                         blinker_counter = 1;
+                print "next_mode = " + str(next_mode)
                 mode = next_mode
                 remote = 0
 
