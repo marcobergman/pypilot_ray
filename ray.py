@@ -275,6 +275,7 @@ class RayClient():
                         print "Stand by"
                         self.set ("ap.enabled", False)
                         self.set ("servo.command", 0)
+                        self.set ("imu.compass.calibration.locked", True)
                         next_mode = MODE_STBY
                         self.beep(2)
                 if (self.mode == MODE_GAINS):
@@ -289,6 +290,7 @@ class RayClient():
                 self.set ("ap.heading_command", int(self.last_val("ap.heading")))
                 self.set ("ap.enabled", True)
                 self.set ("ap.mode", "compass")
+                self.set ("imu.compass.calibration.locked", False)
                 print datetime.now()
                 next_mode = MODE_AUTO
 
@@ -453,4 +455,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
