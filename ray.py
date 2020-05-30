@@ -367,14 +367,14 @@ class RayClient():
         if (key == 48 and self.mode == MODE_AUTO):
                 self.beep (3)
                 print "Tack Port"
-                adjust_heading(-100)
+                self.adjust_heading(-100)
                 # SetSignalkValue("ap.tack.direction", "port")
                 # SetSignalkValue("ap.tack.state", "begin")
         # Tack Starboard +1 & +10
         if (key == 12 and self.mode == MODE_AUTO):
                 self.beep (3)
                 print "Tack Starboard"
-                adjust_heading(+100)
+                self.adjust_heading(+100)
                 # SetSignalkValue("ap.tack.direction", "starboard")
                 # SetSignalkValue("ap.tack.state", "begin")
         # Set gains:  +1 & -1
@@ -455,3 +455,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
