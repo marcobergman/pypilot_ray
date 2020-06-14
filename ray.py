@@ -170,7 +170,7 @@ class RayClient():
                 self.beep(1)
         if ( b == 4 ):
                 self.beep(3)
-                time.sleep(0.1)
+                time.sleep(0.05)
                 self.beep(3)
 
 
@@ -271,7 +271,7 @@ class RayClient():
 
         # Standby key
         if (key == 1):
-                if (self.mode in [MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
+                if (self.mode in [MODE_STBY, MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                         print "Stand by"
                         self.set ("ap.enabled", False)
                         self.set ("servo.command", 0)
@@ -391,6 +391,11 @@ class RayClient():
                 print "Waypoint arrival, confirm with 'Track'"
                 next_mode = MODE_WAYPOINT_L
                 self.bell(2)
+        if (key == 33 and self.mode in [MODE_STBY]):
+                print "Calibrate on in standby"
+                self.beep(4)
+                self.set ("imu.compass.calibration.locked", False)
+
 
 
         if self.mode != next_mode:
