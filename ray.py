@@ -64,6 +64,7 @@ class RayClient():
                      'ap.pilot.basic.P', 'ap.pilot.basic.I', 'ap.pilot.basic.D']
 
         self.last_msg = {}
+        self.last_msg['ap.bell_server'] = "10.10.10.1"
 
         host = ''
         if len(sys.argv) > 1:
@@ -96,16 +97,11 @@ class RayClient():
             self.client.set(name, value)
 
 
-    def get(self, name):
-        if self.client:
-            self.client.get(name)
-
-
 
     def bell(self, b):
 
         bell_server = self.last_val('ap.bell_server')
-        print ("bell_server=" + str(bell_server))
+        #print ("bell_server=" + str(bell_server))
 
         if (bell_server != 'N/A'):
             if ( b == 1 ):
@@ -356,6 +352,9 @@ class RayClient():
                 print ("Waypoint arrival, confirm with 'Track'")
                 next_mode = MODE_WAYPOINT_L
                 self.bell(2)
+        if (key == 1003 and self.mode in [MODE_WAYPOINT_R, MODE_WAYPOINT_L]):
+                print ("Waypoint remote cancel")
+                next_mode = MODE_TRACK
         if (key == 33 and self.mode in [MODE_STBY]):
                 print ("Calibrate on in standby")
                 self.beep(4)
@@ -372,7 +371,6 @@ class RayClient():
 
 
     def processKeys(self):
-        bell_server = self.get("ap.bell_server")
         # wait for a button to be pressed. In the meantime, listen for SignalK messages and blink the LED:
         while (GPIO.input(SB) == 1 and GPIO.input(AU) == 1 and GPIO.input(P1) == 1 and GPIO.input(P10) == 1 and GPIO.input(M10) == 1 and GPIO.input(M1) == 1 and self.remote_key == 0):
                 self.getMessages()
