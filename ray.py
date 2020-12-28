@@ -7,31 +7,13 @@
 # License as published by the Free Software Foundation; either
 # version 3 of the License, or (at your option) any later version.
 
-#from __future__ import print_function
-#import json
-
 import sys, os, time, math
-import socket
-from datetime import datetime
-from signalk.client import SignalKClient
-from signalk.server import SignalKServer
-from signalk.values import *
 import RPi.GPIO as GPIO
 
-
-from signalk import kjson
-import socket
-
-def SetSignalkValue (name, value):
-        # Write one value to signalk
-        request = {'method' : 'set', 'name' : name, 'value' : value}
-        connection.send(kjson.dumps(request)+'\n')
-
-HOST='127.0.0.1'
-PORT=21311
-
-connection = socket.create_connection((HOST, PORT))
-
+from datetime import datetime
+from pypilot.client import pypilotClient
+from pypilot import pyjson
+from values import *
 
 # GPIO constants: connect switches to ground on these GPIO pins
 AU = 26      # Auto
@@ -60,6 +42,7 @@ class RayClient():
         self.blinker_counter = 0
         self.mode = MODE_STBY
         self.last_servo_command = 0
+        self.last_bell = datetime.now()
 
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)
@@ -86,35 +69,17 @@ class RayClient():
         if len(sys.argv) > 1:
             host = sys.argv[1]
 
-        def on_con(client):
-            self.value_list = client.list_values(10)
+        try:
+            self.client = pypilotClient(host)
 
             for name in watchlist:
-                client.watch(name)
+                self.client.watch(name)
 
-        try:
-            self.client = SignalKClient(on_con, host)
-
-            if self.value_list:
-                print('connected')
-            else:
-                client.disconnect()
-                raise 1
+            print('connected')
         except Exception as e:
             print(e)
             self.client = False
             time.sleep(1)
-
-        self.server = SignalKServer()
-
-        def Register(_type, name, *args, **kwargs):
-            return self.server.Register(_type(*([name] + list(args)), **kwargs))
-
-        ap_bell_server = Register(EnumProperty, 'ap.bell_server', '10.10.10.1', ['10.10.10.1', '10.10.10.2', '10.10.10.4', '192.168.178.129'], persistent=True)
-        self.last_msg['ap.bell_server'] = ap_bell_server.value
-
-        ap_pilot = Register(StringValue, 'ap.pilot', 'none')
-        self.last_msg['ap.pilot'] = ap_pilot.value
 
 
 
@@ -127,8 +92,8 @@ class RayClient():
 
     def set(self, name, value):
         if self.client:
+            # print ("setting {} to {}".format(name, value))
             self.client.set(name, value)
-
 
 
     def get(self, name):
@@ -186,8 +151,8 @@ class RayClient():
         gain_name = gain_name.replace("pilot..", "")
         current_gain = self.last_val (gain_name)
         new_gain = current_gain * factor
-        print gain_name + " = " + str(current_gain) + " * " + str(factor) + " = " + str(new_gain)
-        SetSignalkValue (gain_name, new_gain)
+        print (gain_name + " = " + str(current_gain) + " * " + str(factor) + " = " + str(new_gain))
+        self.set (gain_name, new_gain)
 
 
 
@@ -197,8 +162,8 @@ class RayClient():
         if current_value == "N/A":
                 current_value = 0
         new_value = current_value + adjustment
-        print name + " = " + str(current_value) + " + " + str(adjustment) + " = " + str(new_value)
-        SetSignalkValue(name, new_value)
+        print (name + " = " + str(current_value) + " + " + str(adjustment) + " = " + str(new_value))
+        self.set (name, new_value)
 
 
 
@@ -246,22 +211,22 @@ class RayClient():
         while True:
             result = False
             if not self.client:
+                print("reconnecting...")
                 self.connect()
+                print("reconnected...")
                 break
             try:
-                result = self.client.receive_single()
+                msgs = self.client.receive()
             except Exception as e:
                 print('disconnected', e)
                 self.client = False
 
-            if not result:
+            if not msgs:
                 break
 
-            name, data = result
-
-            if 'value' in data:
-                self.last_msg[name] = data['value']
-                #print(str(name) + " = " + str(data['value']))
+            for name, value in msgs.items():
+                self.last_msg[name] = value
+                #print(str(name) + " = " + str(value))
 
 
 
@@ -272,7 +237,7 @@ class RayClient():
         # Standby key
         if (key == 1):
                 if (self.mode in [MODE_STBY, MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
-                        print "Stand by"
+                        print ("Stand by")
                         self.set ("ap.enabled", False)
                         self.set ("servo.command", 0)
                         self.set ("imu.compass.calibration.locked", True)
@@ -280,119 +245,119 @@ class RayClient():
                         self.beep(2)
                 if (self.mode == MODE_GAINS):
                         next_mode = MODE_D
-                        print "Enter D:"
+                        print ("Enter D:")
 
         # Auto key
         if (key == 2 and self.mode != MODE_AUTO):
                 self.beep(1)
-                print "Auto"
-                print datetime.now()
+                print ("Auto")
+                print (datetime.now())
                 self.set ("ap.heading_command", int(self.last_val("ap.heading")))
                 self.set ("ap.enabled", True)
                 self.set ("ap.mode", "compass")
                 self.set ("imu.compass.calibration.locked", False)
-                print datetime.now()
+                print (datetime.now())
                 next_mode = MODE_AUTO
 
         # +1
         if (key == 4):
                 self.beep(1)
                 if (self.mode == MODE_AUTO):
-                        print "+1"
+                        print ("+1")
                         self.adjust_heading(+1)
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, FACTOR_LOW)
                 if (self.mode in [MODE_STBY]):
                         servo_command = -20
-                        SetSignalkValue ("servo.speed.max", SERVO_SPEED_SLOW)
-                        SetSignalkValue ("servo.speed.min", SERVO_SPEED_SLOW)
-                        SetSignalkValue ("servo.command", servo_command)
+                        self.set ("servo.speed.max", SERVO_SPEED_SLOW)
+                        self.set ("servo.speed.min", SERVO_SPEED_SLOW)
+                        self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # -1
         if (key == 32):
                 self.beep (1)
                 if (self.mode == MODE_AUTO):
-                        print "-1"
+                        print ("-1")
                         self.adjust_heading(-1)
                 if (self.mode == MODE_GAINS):
                         next_mode = MODE_P
-                        print "Enter P:"
+                        print ("Enter P:")
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, 1 / FACTOR_LOW)
                 if (self.mode in [MODE_STBY]):
                         servo_command = +20
-                        SetSignalkValue ("servo.speed.max", SERVO_SPEED_SLOW)
-                        SetSignalkValue ("servo.speed.min", SERVO_SPEED_SLOW)
-                        SetSignalkValue ("servo.command", servo_command)
+                        self.set ("servo.speed.max", SERVO_SPEED_SLOW)
+                        self.set ("servo.speed.min", SERVO_SPEED_SLOW)
+                        self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # +10
         if (key == 8):
                 self.beep(2)
                 if (self.mode == MODE_AUTO):
-                        print "+10"
+                        print ("+10")
                         self.adjust_heading(+10)
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, FACTOR_MEDIUM)
                 if (self.mode in [MODE_STBY]):
-                        servo_command = -1000
-                        SetSignalkValue ("servo.speed.max", SERVO_SPEED_FAST)
-                        SetSignalkValue ("servo.speed.min", SERVO_SPEED_FAST)
-                        SetSignalkValue ("servo.command", servo_command)
+                        servo_command = -1
+                        self.set ("servo.speed.max", SERVO_SPEED_FAST)
+                        self.set ("servo.speed.min", SERVO_SPEED_FAST)
+                        self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # -10
         if (key == 16):
                 self.beep (2)
                 if (self.mode == MODE_AUTO):
-                        print "-10"
+                        print ("-10")
                         self.adjust_heading(-10)
                 if (self.mode == MODE_GAINS):
                         next_mode = MODE_I
-                        print "Enter I:"
+                        print ("Enter I:")
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, 1 / FACTOR_MEDIUM)
                 if (self.mode in [MODE_STBY]):
-                        servo_command = +1000
-                        SetSignalkValue ("servo.speed.max", SERVO_SPEED_FAST)
-                        SetSignalkValue ("servo.speed.min", SERVO_SPEED_FAST)
-                        SetSignalkValue ("servo.command", servo_command)
+                        servo_command = +1
+                        self.set ("servo.speed.max", SERVO_SPEED_FAST)
+                        self.set ("servo.speed.min", SERVO_SPEED_FAST)
+                        self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # Track -10 & +10
         if (key == 24 and self.mode in [MODE_AUTO, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                 self.beep (3)
-                print "Track"
-                SetSignalkValue ("ap.enabled", True)
-                SetSignalkValue ("ap.mode", "gps")
+                print ("Track")
+                self.set ("ap.enabled", True)
+                self.set ("ap.mode", "gps")
                 next_mode = MODE_TRACK
         # Tack Port -1 & -10
         if (key == 48 and self.mode == MODE_AUTO):
                 self.beep (3)
-                print "Tack Port"
+                print ("Tack Port")
                 self.adjust_heading(-100)
-                # SetSignalkValue("ap.tack.direction", "port")
-                # SetSignalkValue("ap.tack.state", "begin")
+                # self.set("ap.tack.direction", "port")
+                # self.set("ap.tack.state", "begin")
         # Tack Starboard +1 & +10
         if (key == 12 and self.mode == MODE_AUTO):
                 self.beep (3)
-                print "Tack Starboard"
+                print ("Tack Starboard")
                 self.adjust_heading(+100)
-                # SetSignalkValue("ap.tack.direction", "starboard")
-                # SetSignalkValue("ap.tack.state", "begin")
+                # self.set("ap.tack.direction", "starboard")
+                # self.set("ap.tack.state", "begin")
         # Set gains:  +1 & -1
         if (key == 36 and self.mode in [MODE_AUTO, MODE_TRACK, MODE_P, MODE_I, MODE_D]):
                 self.beep (3)
-                print "Choose gain"
+                print ("Choose gain")
                 next_mode = MODE_GAINS
         # Artificial mode: Waypoint Arrival
         if (key == 1000 and self.mode in [MODE_TRACK]):
-                print "Waypoint arrival, confirm with 'Track'"
+                print ("Waypoint arrival, confirm with 'Track'")
                 next_mode = MODE_WAYPOINT_R
                 self.bell(1)
         if (key == 1001 and self.mode in [MODE_TRACK]):
-                print "Waypoint arrival, confirm with 'Track'"
+                print ("Waypoint arrival, confirm with 'Track'")
                 next_mode = MODE_WAYPOINT_L
                 self.bell(2)
         if (key == 33 and self.mode in [MODE_STBY]):
-                print "Calibrate on in standby"
+                print ("Calibrate on in standby")
                 self.beep(4)
                 self.set ("imu.compass.calibration.locked", False)
 
@@ -407,6 +372,7 @@ class RayClient():
 
 
     def processKeys(self):
+        bell_server = self.get("ap.bell_server")
         # wait for a button to be pressed. In the meantime, listen for SignalK messages and blink the LED:
         while (GPIO.input(SB) == 1 and GPIO.input(AU) == 1 and GPIO.input(P1) == 1 and GPIO.input(P10) == 1 and GPIO.input(M10) == 1 and GPIO.input(M1) == 1 and self.remote_key == 0):
                 self.getMessages()
@@ -415,7 +381,7 @@ class RayClient():
                 try:
                         with open('/tmp/remote', 'r') as myfile:
                                 line = myfile.read().replace("\n", "")
-                        print "remote=" + line
+                        print ("remote=" + line)
                         os.remove('/tmp/remote')
                         self.remote_key = int(line)
                 except:
@@ -435,14 +401,15 @@ class RayClient():
                 self.doBlinker()
                 time.sleep (0.05)
                 if key in [4,8,16,32] and self.mode in [MODE_STBY]:
-                        SetSignalkValue ("servo.command", self.last_servo_command)
+                        self.set ("servo.command", self.last_servo_command)
+                        self.getMessages() # This line has to be here to 'flush' servo.command messages to the server.
 
         # Key released
-        SetSignalkValue ("servo.speed.max", SERVO_SPEED_FAST)
-        SetSignalkValue ("servo.speed.min", SERVO_SPEED_FAST)
+        self.set ("servo.speed.max", SERVO_SPEED_FAST)
+        self.set ("servo.speed.min", SERVO_SPEED_FAST)
         # Immediately stop manual movement:
         if (self.mode in [MODE_STBY]):
-                SetSignalkValue ("servo.command", 0)
+                self.set ("servo.command", 0)
 
 
 
@@ -460,4 +427,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
