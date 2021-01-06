@@ -28,11 +28,11 @@ BLINKER = 19 # Light
 FACTOR_LOW = 1.1
 FACTOR_MEDIUM = 1.5
 FACTOR_HIGH = 2.0
-SERVO_SPEED_SLOW = 20
+SERVO_SPEED_SLOW = 0.5
 SERVO_SPEED_FAST = 100
 THRESHOLD = 10 # Long press threshold
 
-MODE_STBY, MODE_AUTO, MODE_TRACK, MODE_GAINS, MODE_P, MODE_I, MODE_D, MODE_WAYPOINT_R, MODE_WAYPOINT_L = range(9)
+MODE_STBY, MODE_AUTO, MODE_TRACK, MODE_GAINS, MODE_P, MODE_I, MODE_D, MODE_WAYPOINT_R, MODE_WAYPOINT_L, MODE_WIND = range(10)
 
 
 class RayClient():
@@ -171,6 +171,8 @@ class RayClient():
                         self.mode = MODE_AUTO
                 if (ap_enabled and ap_mode == 'gps' and self.mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                         self.mode = MODE_TRACK
+                if (ap_enabled and ap_mode == 'wind' and self.mode not in [MODE_P, MODE_I, MODE_D, MODE_GAINS, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
+                        self.mode = MODE_WIND
                 if (not ap_enabled):
                         self.mode = MODE_STBY
 
@@ -180,6 +182,8 @@ class RayClient():
                 light_on = (self.blinker_counter not in [1, 2])
         if (self.mode == MODE_TRACK):
                 light_on = (self.blinker_counter not in [1, 2, 5, 6])
+        if (self.mode == MODE_WIND):
+                light_on = (self.blinker_counter not in [1, 2, 5, 6, 9, 10])
         if (self.mode == MODE_GAINS):
                 light_on = (self.blinker_counter % 6 > 3)
         if (self.mode in [MODE_P, MODE_I, MODE_D]):
@@ -232,7 +236,7 @@ class RayClient():
 
         # Standby key
         if (key == 1):
-                if (self.mode in [MODE_STBY, MODE_AUTO, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
+                if (self.mode in [MODE_STBY, MODE_AUTO, MODE_WIND, MODE_P, MODE_I, MODE_D, MODE_TRACK, MODE_WAYPOINT_L, MODE_WAYPOINT_R]):
                         print ("Stand by")
                         self.set ("ap.enabled", False)
                         self.set ("servo.command", 0)
@@ -247,12 +251,10 @@ class RayClient():
         if (key == 2 and self.mode != MODE_AUTO):
                 self.beep(1)
                 print ("Auto")
-                print (datetime.now())
                 self.set ("ap.heading_command", int(self.last_val("ap.heading")))
                 self.set ("ap.enabled", True)
                 self.set ("ap.mode", "compass")
                 self.set ("imu.compass.calibration.locked", False)
-                print (datetime.now())
                 next_mode = MODE_AUTO
 
         # +1
@@ -264,7 +266,7 @@ class RayClient():
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, FACTOR_LOW)
                 if (self.mode in [MODE_STBY]):
-                        servo_command = -20
+                        servo_command = -0.2
                         self.set ("servo.speed.max", SERVO_SPEED_SLOW)
                         self.set ("servo.speed.min", SERVO_SPEED_SLOW)
                         self.set ("servo.command", servo_command)
@@ -281,7 +283,7 @@ class RayClient():
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, 1 / FACTOR_LOW)
                 if (self.mode in [MODE_STBY]):
-                        servo_command = +20
+                        servo_command = +0.2
                         self.set ("servo.speed.max", SERVO_SPEED_SLOW)
                         self.set ("servo.speed.min", SERVO_SPEED_SLOW)
                         self.set ("servo.command", servo_command)
@@ -295,7 +297,7 @@ class RayClient():
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, FACTOR_MEDIUM)
                 if (self.mode in [MODE_STBY]):
-                        servo_command = -1
+                        servo_command = -2
                         self.set ("servo.speed.max", SERVO_SPEED_FAST)
                         self.set ("servo.speed.min", SERVO_SPEED_FAST)
                         self.set ("servo.command", servo_command)
@@ -312,7 +314,7 @@ class RayClient():
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, 1 / FACTOR_MEDIUM)
                 if (self.mode in [MODE_STBY]):
-                        servo_command = +1
+                        servo_command = +2
                         self.set ("servo.speed.max", SERVO_SPEED_FAST)
                         self.set ("servo.speed.min", SERVO_SPEED_FAST)
                         self.set ("servo.command", servo_command)
@@ -324,6 +326,13 @@ class RayClient():
                 self.set ("ap.enabled", True)
                 self.set ("ap.mode", "gps")
                 next_mode = MODE_TRACK
+        # Wind Stby & Auto
+        if (key == 3 and self.mode in [MODE_AUTO, MODE_TRACK]):
+                self.beep (4)
+                print ("Wind")
+                self.set ("ap.enabled", True)
+                self.set ("ap.mode", "wind")
+                next_mode = MODE_WIND
         # Tack Port -1 & -10
         if (key == 48 and self.mode == MODE_AUTO):
                 self.beep (3)
