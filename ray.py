@@ -28,8 +28,8 @@ BLINKER = 19 # Light
 FACTOR_LOW = 1.1
 FACTOR_MEDIUM = 1.5
 FACTOR_HIGH = 2.0
-SERVO_SPEED_SLOW = 0.5
-SERVO_SPEED_FAST = 100
+SERVO_SPEED_SLOW = 5.0
+SERVO_SPEED_FAST = 100.0
 THRESHOLD = 10 # Long press threshold
 
 MODE_STBY, MODE_AUTO, MODE_TRACK, MODE_GAINS, MODE_P, MODE_I, MODE_D, MODE_WAYPOINT_R, MODE_WAYPOINT_L, MODE_WIND = range(10)
@@ -64,7 +64,7 @@ class RayClient():
                      'ap.pilot.basic.P', 'ap.pilot.basic.I', 'ap.pilot.basic.D']
 
         self.last_msg = {}
-        self.last_msg['ap.bell_server'] = "10.10.10.1"
+        self.last_msg['ap.bell_server'] = "10.10.10.4"
 
         host = ''
         if len(sys.argv) > 1:
@@ -260,21 +260,21 @@ class RayClient():
         # +1
         if (key == 4):
                 self.beep(1)
-                if (self.mode == MODE_AUTO):
+                if (self.mode in [MODE_AUTO, MODE_TRACK, MODE_WIND]):
                         print ("+1")
                         self.adjust_heading(+1)
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, FACTOR_LOW)
                 if (self.mode in [MODE_STBY]):
                         servo_command = -0.2
-                        self.set ("servo.speed.max", SERVO_SPEED_SLOW)
-                        self.set ("servo.speed.min", SERVO_SPEED_SLOW)
+                        #self.set ("servo.speed.max", SERVO_SPEED_SLOW)
+                        #self.set ("servo.speed.min", SERVO_SPEED_SLOW)
                         self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # -1
         if (key == 32):
                 self.beep (1)
-                if (self.mode == MODE_AUTO):
+                if (self.mode in [MODE_AUTO, MODE_TRACK, MODE_WIND]):
                         print ("-1")
                         self.adjust_heading(-1)
                 if (self.mode == MODE_GAINS):
@@ -284,28 +284,28 @@ class RayClient():
                         self.adjust_gain (self.mode, 1 / FACTOR_LOW)
                 if (self.mode in [MODE_STBY]):
                         servo_command = +0.2
-                        self.set ("servo.speed.max", SERVO_SPEED_SLOW)
-                        self.set ("servo.speed.min", SERVO_SPEED_SLOW)
+                        #self.set ("servo.speed.max", SERVO_SPEED_SLOW)
+                        #self.set ("servo.speed.min", SERVO_SPEED_SLOW)
                         self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # +10
         if (key == 8):
                 self.beep(2)
-                if (self.mode == MODE_AUTO):
+                if (self.mode in [MODE_AUTO, MODE_TRACK, MODE_WIND]):
                         print ("+10")
                         self.adjust_heading(+10)
                 if (self.mode in [MODE_P, MODE_I, MODE_D]):
                         self.adjust_gain (self.mode, FACTOR_MEDIUM)
                 if (self.mode in [MODE_STBY]):
                         servo_command = -2
-                        self.set ("servo.speed.max", SERVO_SPEED_FAST)
-                        self.set ("servo.speed.min", SERVO_SPEED_FAST)
+                        #self.set ("servo.speed.max", SERVO_SPEED_FAST)
+                        #self.set ("servo.speed.min", SERVO_SPEED_FAST)
                         self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # -10
         if (key == 16):
                 self.beep (2)
-                if (self.mode == MODE_AUTO):
+                if (self.mode in [MODE_AUTO, MODE_TRACK, MODE_WIND]):
                         print ("-10")
                         self.adjust_heading(-10)
                 if (self.mode == MODE_GAINS):
@@ -315,8 +315,8 @@ class RayClient():
                         self.adjust_gain (self.mode, 1 / FACTOR_MEDIUM)
                 if (self.mode in [MODE_STBY]):
                         servo_command = +2
-                        self.set ("servo.speed.max", SERVO_SPEED_FAST)
-                        self.set ("servo.speed.min", SERVO_SPEED_FAST)
+                        #self.set ("servo.speed.max", SERVO_SPEED_FAST)
+                        #self.set ("servo.speed.min", SERVO_SPEED_FAST)
                         self.set ("servo.command", servo_command)
                         self.last_servo_command = servo_command
         # Track -10 & +10
@@ -412,8 +412,8 @@ class RayClient():
                         self.getMessages() # This line has to be here to 'flush' servo.command messages to the server.
 
         # Key released
-        self.set ("servo.speed.max", SERVO_SPEED_FAST)
-        self.set ("servo.speed.min", SERVO_SPEED_FAST)
+        #self.set ("servo.speed.max", SERVO_SPEED_FAST)
+        #self.set ("servo.speed.min", SERVO_SPEED_FAST)
         # Immediately stop manual movement:
         if (self.mode in [MODE_STBY]):
                 self.set ("servo.command", 0)
