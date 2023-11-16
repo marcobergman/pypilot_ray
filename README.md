@@ -18,7 +18,7 @@ LED   GPIO-19
 To install:
 - cd ~tc/pypilot/
 - git clone git://github.com/marcobergman/pypilot_ray
-- change /etc/sv/pypilot_lcd/run
+- change /etc/sv/pypilot_hat/run
       exec nice -n 5 chpst python /mnt/mmcblk0p2/tinypilot/pypilot/pypilot_ray/ray.py
       
 To start
