@@ -23,4 +23,29 @@ To install:
       
 To start
 - Will autostart
-- manual: sv restart pypilot
+- manual: sudo sv restart pypilot
+
+
+Example:
+```
+# copy ray.py to tinypilot:
+tc@pypilot:~$ mkdir /mnt/mmcblk0p2/tinypilot/pypilot/pypilot_ray/
+tc@pypilot:~$ scp pi@10.10.10.1:ray.py /mnt/mmcblk0p2/tinypilot/pypilot/pypilot_ray/ray.py
+
+# test:
+tc@pypilot:~$ sudo python3 /mnt/mmcblk0p2/tinypilot/pypilot/pypilot_ray/ray.py
+init...
+connected
+key = 2, mode = 0
+Auto
+
+# adjust pypilot_hat service:
+# replace with: exec nice -n 5 chpst -b pypilot_ray python3.6 /mnt/mmcblk0p2/tinypilot/pypilot/pypilot_ray/ray.py
+tc@pypilot:~$ sudo vi /etc/sv/pypilot_hat/run
+# make change persistent:
+tc@pypilot:~$ filetool.sh -b
+tc@pypilot:~$ sudo reboot
+
+tc@pypilot:~$ ps -ef | grep ray
+4023 root     {python3.6} pypilot_ray /mnt/mmcblk0p2/tinypilot/pypilot/pypilot_ray/ray.py
+```
