@@ -3,7 +3,8 @@ Raymarine st2000 ui emulator for pypilot
 
 Allows hooking up the origial buttons of the raymarine st2000 to pypilot, using the same button combinations, but having some extra facilities for adjusting pid gains.
 
-Keys and LED are connected to GPIO and ground.
+Keys and LED are connected to GPIO and ground. This module is part of the [raymarine st2000 pypilot conversion](https://github.com/marcobergman/pypilot_conversion).
+
 ```
 KEY   BCM
 ====  =======
