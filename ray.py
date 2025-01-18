@@ -366,6 +366,8 @@ class RayClient():
                 print ("Steer into Wind")
                 self.set ("ap.enabled", True)
                 self.set ("ap.mode", "wind")
+                self.getMessages()
+                time.sleep (0.05)
                 self.set ("ap.heading_command", 0)
                 next_mode = MODE_WIND
 
